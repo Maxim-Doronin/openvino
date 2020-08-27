@@ -3,26 +3,7 @@
 //
 
 /* on windows min and max already defined that makes using numeric_limits impossible */
-#if defined(WIN32)
-#define NOMINMAX
-#endif
-
-#include <sys/stat.h>
-#include <os/windows/w_dirent.h>
-
-#include <algorithm>
-#include <map>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-#include <string>
-#include <limits>
-
 #include "vpu_tools_common.hpp"
-#include <vpu/utils/string.hpp>
-#include "samples/common.hpp"
-
-#include "precision_utils.h"
 
 InferenceEngine::CNNNetwork readNetwork(const std::string &xmlFileName) {
     return InferenceEngine::Core().ReadNetwork(xmlFileName);

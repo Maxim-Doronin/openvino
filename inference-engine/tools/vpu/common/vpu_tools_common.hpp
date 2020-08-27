@@ -3,12 +3,26 @@
 //
 
 #pragma once
+#if defined(WIN32)
+#define NOMINMAX
+#endif
 
-#include <string>
+#include <sys/stat.h>
+#include <os/windows/w_dirent.h>
+
+#include <algorithm>
 #include <map>
 #include <memory>
+#include <unordered_map>
+#include <utility>
 #include <vector>
+#include <string>
+#include <limits>
 
+#include <vpu/utils/string.hpp>
+#include "samples/common.hpp"
+
+#include "precision_utils.h"
 #include "inference_engine.hpp"
 
 InferenceEngine::CNNNetwork readNetwork(const std::string &xmlFileName);

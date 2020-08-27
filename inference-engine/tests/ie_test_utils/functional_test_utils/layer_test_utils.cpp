@@ -152,7 +152,6 @@ std::vector<std::vector<std::uint8_t>> LayerTestsCommon::CalculateRefs() {
 
         auto& referenceInput = referenceInputs[i];
         referenceInput.resize(inputSize);
-
         auto memory = InferenceEngine::as<InferenceEngine::MemoryBlob>(input);
         IE_ASSERT(memory);
         const auto lockedMemory = memory->wmap();

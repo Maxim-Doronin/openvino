@@ -15,4 +15,5 @@
 if(ENABLE_MYRIAD)
     add_subdirectory(vpu_compile)
     add_subdirectory(vpu_perfcheck)
+    add_subdirectory(vpu_graph_editor)
 endif()
