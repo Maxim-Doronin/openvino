@@ -12,6 +12,16 @@
 
 #include "XLinkStream.h"
 
+#if (defined(_WIN32) || defined(_WIN64))
+# include "win_pthread.h"
+# include "win_semaphore.h"
+#else
+# include <pthread.h>
+# ifndef __APPLE__
+#  include <semaphore.h>
+# endif
+#endif
+
 #if !defined(XLINK_ALIGN_TO_BOUNDARY)
 # if defined(_WIN32) && !defined(__GNUC__)
 #  define XLINK_ALIGN_TO_BOUNDARY(_n) __declspec(align(_n))
@@ -58,6 +68,7 @@ typedef struct xLinkDesc_t {
     xLinkDeviceHandle_t deviceHandle;
     linkId_t id;
     sem_t dispatcherClosedSem;
+    pthread_mutex_t dispatcherClosedMutex;
 
     //Deprecated fields. Begin.
     int hostClosedFD;
@@ -167,6 +178,20 @@ typedef struct xLinkEvent_t {
     XLINK_EVENT_NOT_ACKNOWLEDGE(event); \
     (event)->header.flags.bitField.localServe = 1; \
 } while(0)
+
+// ------------------------------------
+// XLinkPrivateDefines Semaphore implementation. Begin.
+// ------------------------------------
+
+int XLink_sem_init(sem_t* sem, pthread_mutex_t* mutex, int pshared, unsigned int value);
+int XLink_sem_wait(sem_t* sem, pthread_mutex_t* mutex);
+int XLink_sem_timedwait(sem_t* sem, pthread_mutex_t* mutex, const struct timespec *abstime);
+int XLink_sem_post(sem_t* sem, pthread_mutex_t* mutex);
+int XLink_sem_destroy(sem_t* sem, pthread_mutex_t* mutex);
+
+// ------------------------------------
+// XLinkPrivateDefines Semaphore implementation. End.
+// ------------------------------------
 
 #ifdef __cplusplus
 }

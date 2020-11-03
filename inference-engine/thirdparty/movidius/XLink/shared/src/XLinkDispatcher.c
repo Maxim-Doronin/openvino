@@ -61,6 +61,7 @@ typedef struct xLinkEventPriv_t {
 
 typedef struct {
     sem_t sem;
+    pthread_mutex_t destroyMutex;
     pthread_t threadId;
     int refs;
 } localSem_t;
@@ -85,6 +86,8 @@ typedef struct {
 
     sem_t addEventSem;
     sem_t notifyDispatcherSem;
+    pthread_mutex_t addEventMutex;
+    pthread_mutex_t notifyDispatcherMutex;
     volatile uint32_t resetXLink;
     uint32_t semaphores;
     pthread_t xLinkThreadId;
@@ -96,7 +99,7 @@ typedef struct {
 
 
 // ------------------------------------
-// Data structures declaration. Begin.
+// Data structures declaration. End.
 // ------------------------------------
 
 
@@ -128,6 +131,8 @@ static int pthread_t_compare(pthread_t a, pthread_t b);
 
 static sem_t* createSem(xLinkSchedulerState_t* curr);
 static sem_t* getAndRefSem(pthread_t threadId, xLinkSchedulerState_t *curr, int inc_ref);
+static sem_t* getAndRefSemWithMutex(pthread_t threadId, xLinkSchedulerState_t *curr,
+                                    int inc_ref, pthread_mutex_t** destroyMutex);
 static int unrefSem(sem_t* sem,  xLinkSchedulerState_t* curr);
 
 #if (defined(_WIN32) || defined(_WIN64))
@@ -245,11 +250,11 @@ XLinkError_t DispatcherStart(xLinkDeviceHandle_t *deviceHandle)
         schedulerState[idx].lQueue.q[eventIdx].isServed = EVENT_SERVED;
     }
 
-    if (sem_init(&schedulerState[idx].addEventSem, 0, 1)) {
+    if (XLink_sem_init(&schedulerState[idx].addEventSem, &schedulerState[idx].addEventMutex, 0, 1)) {
         perror("Can't create semaphore\n");
         return -1;
     }
-    if (sem_init(&schedulerState[idx].notifyDispatcherSem, 0, 0)) {
+    if (XLink_sem_init(&schedulerState[idx].notifyDispatcherSem, &schedulerState[idx].notifyDispatcherMutex, 0, 0)) {
         perror("Can't create semaphore\n");
     }
     localSem_t* temp = schedulerState[idx].eventSemaphores;
@@ -326,7 +331,7 @@ xLinkEvent_t* DispatcherAddEvent(xLinkEventOrigin_t origin, xLinkEvent_t *event)
         return NULL;
     }
     mvLog(MVLOG_DEBUG, "Receiving event %s %d\n", TypeToStr(event->header.type), origin);
-    if (sem_wait(&curr->addEventSem)) {
+    if (XLink_sem_wait(&curr->addEventSem, &curr->addEventMutex)) {
         mvLog(MVLOG_ERROR,"can't wait semaphore\n");
         return NULL;
     }
@@ -341,7 +346,7 @@ xLinkEvent_t* DispatcherAddEvent(xLinkEventOrigin_t origin, xLinkEvent_t *event)
         }
         if (!sem) {
             mvLog(MVLOG_WARN,"No more semaphores. Increase XLink or OS resources\n");
-            if (sem_post(&curr->addEventSem)) {
+            if (XLink_sem_post(&curr->addEventSem, &curr->addEventMutex)) {
                 mvLog(MVLOG_ERROR,"can't post semaphore\n");
             }
 
@@ -352,10 +357,10 @@ xLinkEvent_t* DispatcherAddEvent(xLinkEventOrigin_t origin, xLinkEvent_t *event)
     } else {
         ev = addNextQueueElemToProc(curr, &curr->rQueue, event, NULL, origin);
     }
-    if (sem_post(&curr->addEventSem)) {
+    if (XLink_sem_post(&curr->addEventSem, &curr->addEventMutex)) {
         mvLog(MVLOG_ERROR,"can't post semaphore\n");
     }
-    if (sem_post(&curr->notifyDispatcherSem)) {
+    if (XLink_sem_post(&curr->notifyDispatcherSem, &curr->notifyDispatcherMutex)) {
         mvLog(MVLOG_ERROR, "can't post semaphore\n");
     }
     return ev;
@@ -366,12 +371,13 @@ int DispatcherWaitEventComplete(xLinkDeviceHandle_t *deviceHandle)
     xLinkSchedulerState_t* curr = findCorrespondingScheduler(deviceHandle->xLinkFD);
     ASSERT_XLINK(curr != NULL);
 
-    sem_t* id = getAndRefSem(pthread_self(), curr, 0);
+    pthread_mutex_t* destroyMutex = NULL;
+    sem_t* id = getAndRefSemWithMutex(pthread_self(), curr, 0, &destroyMutex);
     if (id == NULL) {
         return -1;
     }
 
-    int rc = sem_wait(id);
+    int rc = XLink_sem_wait(id, destroyMutex);
 #ifdef __PC__
     if (rc) {
         xLinkEvent_t event = {0};
@@ -380,7 +386,7 @@ int DispatcherWaitEventComplete(xLinkDeviceHandle_t *deviceHandle)
         mvLog(MVLOG_ERROR,"waiting is timeout, sending reset remote event");
         DispatcherAddEvent(EVENT_LOCAL, &event);
         id = getAndRefSem(pthread_self(), curr, 0);
-        if (id == NULL || sem_wait(id)) {
+        if (id == NULL || XLink_sem_wait(id, destroyMutex)) {
             dispatcherReset(curr);
         }
     }
@@ -439,7 +445,7 @@ int DispatcherUnblockEvent(eventId_t id, xLinkEventType_t type, streamId_t strea
                   (int)blockedEvent->packet.header.id,
                   TypeToStr((int)blockedEvent->packet.header.type));
             blockedEvent->isServed = EVENT_READY;
-            if (sem_post(&curr->notifyDispatcherSem)){
+            if (XLink_sem_post(&curr->notifyDispatcherSem, &curr->notifyDispatcherMutex)){
                 mvLog(MVLOG_ERROR, "can't post semaphore\n");
             }
             return 1;
@@ -486,7 +492,7 @@ static sem_t* createSem(xLinkSchedulerState_t* curr)
         while (temp < curr->eventSemaphores + MAXIMUM_SEMAPHORES) {
             if (temp->refs < 0 || curr->semaphores == MAXIMUM_SEMAPHORES) {
                 if (curr->semaphores == MAXIMUM_SEMAPHORES && !temp->refs) {
-                    XLINK_RET_ERR_IF(sem_destroy(&temp->sem) == -1, NULL);
+                    XLINK_RET_ERR_IF(XLink_sem_destroy(&temp->sem, &temp->destroyMutex) == -1, NULL);
                     curr->semaphores --;
                     temp->refs = -1;
 #if (defined(_WIN32) || defined(_WIN64))
@@ -498,7 +504,8 @@ static sem_t* createSem(xLinkSchedulerState_t* curr)
 
                 if (temp->refs == -1) {
                     sem = &temp->sem;
-                    if (sem_init(sem, 0, 0)){
+                    pthread_mutex_t* mutex = &temp->destroyMutex;
+                    if (XLink_sem_init(sem, mutex, 0, 0)){
                         mvLog(MVLOG_ERROR, "Error: Can't create semaphore\n");
                         return NULL;
                     }
@@ -530,6 +537,23 @@ static sem_t* getAndRefSem(pthread_t threadId, xLinkSchedulerState_t *curr, int 
     while (sem < curr->eventSemaphores + MAXIMUM_SEMAPHORES) {
         if (pthread_t_compare(sem->threadId, threadId) && sem->refs >= 0) {
             sem->refs += inc_ref;
+            return &sem->sem;
+        }
+        sem++;
+    }
+    return NULL;
+}
+
+static sem_t* getAndRefSemWithMutex(pthread_t threadId, xLinkSchedulerState_t *curr,
+                                    int inc_ref, pthread_mutex_t** destroyMutex)
+{
+    XLINK_RET_ERR_IF(curr == NULL, NULL);
+
+    localSem_t* sem = curr->eventSemaphores;
+    while (sem < curr->eventSemaphores + MAXIMUM_SEMAPHORES) {
+        if (pthread_t_compare(sem->threadId, threadId) && sem->refs >= 0) {
+            sem->refs += inc_ref;
+            *destroyMutex = &sem->destroyMutex;
             return &sem->sem;
         }
         sem++;
@@ -856,7 +880,7 @@ static xLinkEventPriv_t* dispatcherGetNextEvent(xLinkSchedulerState_t* curr)
 {
     XLINK_RET_ERR_IF(curr == NULL, NULL);
 
-    if (sem_wait(&curr->notifyDispatcherSem)) {
+    if (XLink_sem_wait(&curr->notifyDispatcherSem, &curr->notifyDispatcherMutex)) {
         mvLog(MVLOG_ERROR,"can't post semaphore\n");
     }
 
@@ -893,7 +917,7 @@ static int dispatcherClean(xLinkSchedulerState_t* curr)
 
     mvLog(MVLOG_INFO, "Start Clean Dispatcher...");
 
-    if (sem_post(&curr->notifyDispatcherSem)) {
+    if (XLink_sem_post(&curr->notifyDispatcherSem, &curr->notifyDispatcherMutex)) {
         mvLog(MVLOG_ERROR,"can't post semaphore\n"); //to allow us to get a NULL event
     }
     xLinkEventPriv_t* event = dispatcherGetNextEvent(curr);
@@ -910,13 +934,13 @@ static int dispatcherClean(xLinkSchedulerState_t* curr)
 
     curr->schedulerId = -1;
     curr->resetXLink = 1;
-    sem_destroy(&curr->addEventSem);
-    sem_destroy(&curr->notifyDispatcherSem);
+    XLink_sem_destroy(&curr->addEventSem, &curr->addEventMutex);
+    XLink_sem_destroy(&curr->notifyDispatcherSem, &curr->notifyDispatcherMutex);
     localSem_t* temp = curr->eventSemaphores;
     while (temp < curr->eventSemaphores + MAXIMUM_SEMAPHORES) {
         // unblock potentially blocked event semaphores
-        sem_post(&temp->sem);
-        sem_destroy(&temp->sem);
+        XLink_sem_post(&temp->sem, &temp->destroyMutex);
+        XLink_sem_destroy(&temp->sem, &temp->destroyMutex);
         temp->refs = -1;
         temp++;
     }
@@ -939,7 +963,7 @@ static int dispatcherReset(xLinkSchedulerState_t* curr)
     }
 
     xLinkDesc_t* link = getLink(curr->deviceHandle.xLinkFD);
-    if(link == NULL || sem_post(&link->dispatcherClosedSem)) {
+    if(link == NULL || XLink_sem_post(&link->dispatcherClosedSem, &link->dispatcherClosedMutex)) {
         mvLog(MVLOG_DEBUG,"can't post dispatcherClosedSem\n");
     }
 

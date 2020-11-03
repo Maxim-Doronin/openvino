@@ -150,3 +150,60 @@ streamId_t getNextStreamUniqueId(xLinkDesc_t *link)
 // ------------------------------------
 // Helpers implementation. End.
 // ------------------------------------
+
+
+// ------------------------------------
+// XLinkPrivateDefines Semaphore implementation. Begin.
+// ------------------------------------
+
+#ifndef XLINK_SEM_RET_ERR_IF
+#define XLINK_SEM_RET_ERR_IF(condition, err) do {  \
+        if ((condition)) {                              \
+            return (err);                               \
+        }                                               \
+    } while(0)
+#endif  // XLINK_SEM_RET_ERR_IF
+
+int XLink_sem_init(sem_t* sem, pthread_mutex_t* mutex, int pshared, unsigned int value)
+{
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_init(mutex, NULL), 1);
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_lock(mutex), 1);
+    int rc = sem_init(sem, pshared, value);
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_unlock(mutex), 1);
+    return rc;
+}
+
+int XLink_sem_wait(sem_t* sem, pthread_mutex_t* mutex)
+{
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_lock(mutex), 1);
+    int rc = sem_wait(sem);
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_unlock(mutex), 1);
+    return rc;
+}
+
+int XLink_sem_timedwait(sem_t* sem, pthread_mutex_t* mutex, const struct timespec *abstime)
+{
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_lock(mutex), 1);
+    int rc = sem_timedwait(sem, abstime);
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_unlock(mutex), 1);
+    return rc;
+}
+
+int XLink_sem_post(sem_t* sem, pthread_mutex_t* mutex)
+{
+    int rc = sem_post(sem);
+    return rc;
+}
+
+int XLink_sem_destroy(sem_t* sem, pthread_mutex_t* mutex)
+{
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_lock(mutex), 1);
+    int rc = sem_destroy(sem);
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_unlock(mutex), 1);
+    XLINK_SEM_RET_ERR_IF(pthread_mutex_destroy(mutex), 1);
+    return rc;
+}
+
+// ------------------------------------
+// XLinkPrivateDefines Semaphore implementation. End.
+// ------------------------------------
