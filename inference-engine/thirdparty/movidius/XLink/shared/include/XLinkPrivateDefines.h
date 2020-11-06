@@ -11,6 +11,7 @@
 #define _XLINKPRIVATEDEFINES_H
 
 #include "XLinkStream.h"
+#include "XLinkSemaphore.h"
 
 #if !defined(XLINK_ALIGN_TO_BOUNDARY)
 # if defined(_WIN32) && !defined(__GNUC__)
@@ -57,7 +58,7 @@ typedef struct xLinkDesc_t {
     xLinkState_t peerState;
     xLinkDeviceHandle_t deviceHandle;
     linkId_t id;
-    sem_t dispatcherClosedSem;
+    XLink_sem_t dispatcherClosedSem;
 
     //Deprecated fields. Begin.
     int hostClosedFD;
