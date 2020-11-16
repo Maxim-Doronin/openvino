@@ -11,6 +11,13 @@
 #ifndef _XLINKSEMAPHORE_H
 #define _XLINKSEMAPHORE_H
 
+#ifndef __cplusplus
+#  include <stdatomic.h>
+#else
+#  include <atomic>
+#  define _Atomic(X) std::atomic< X >
+#endif
+
 # if (defined(_WIN32) || defined(_WIN64))
 #  include "win_pthread.h"
 #  include "win_semaphore.h"
@@ -32,16 +39,16 @@ extern "C"
 //
 // This structure describes the semaphore used in XLink and
 // extends the standard semaphore with a reference count.
-// The counter is thread-safe and changes only in cases if
+// The counter has atomic type and changes only in cases if
 // all tools of thread synchronization are really unlocked.
-// refs == -1 in case if semaphore was destroyed;
+// refs == -1 in case if semaphore is not initialized;
 // refs == 0 in case if semaphore was initialized but has no waiters;
 // refs == N in case if there are N waiters which called sem_wait().
 //
 
 typedef struct {
     sem_t psem;
-    int refs;
+    _Atomic(int) refs;
 } XLink_sem_t;
 
 //
