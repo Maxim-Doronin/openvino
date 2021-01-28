@@ -84,7 +84,7 @@ private:
     PowerConfig _powerConfig = PowerConfig::FULL;
     ncDevicePlatform_t _platform = NC_ANY_PLATFORM;
     ncDeviceProtocol_t _protocol = NC_ANY_PROTOCOL;
-    std::chrono::milliseconds _watchdogInterval = std::chrono::milliseconds(1000);
+    std::chrono::milliseconds _watchdogInterval = std::chrono::milliseconds(2000);
     std::chrono::seconds _deviceConnectTimeout = std::chrono::seconds(15);
     std::string _deviceName;
     MovidiusDdrType _memoryType = MovidiusDdrType::AUTO;

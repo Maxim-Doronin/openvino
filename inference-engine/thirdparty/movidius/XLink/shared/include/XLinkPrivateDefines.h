@@ -1,4 +1,4 @@
-// Copyright (C) 2018-2020 Intel Corporation
+// Copyright (C) 2018-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
@@ -7,8 +7,8 @@
 ///
 /// @brief     Application configuration Leon header
 ///
-#ifndef _XLINKPRIVATEDEFINES_H
-#define _XLINKPRIVATEDEFINES_H
+#ifndef OPENVINO_XLINK_PRIVATEDEFINES_H
+#define OPENVINO_XLINK_PRIVATEDEFINES_H
 
 #include "XLinkPublicDefines.h"
 
@@ -91,6 +91,6 @@ typedef enum
 }
 #endif
 
-#endif
+#endif  // OPENVINO_XLINK_PRIVATEDEFINES_H
 
 /* end of include file */
