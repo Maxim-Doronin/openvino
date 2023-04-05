@@ -229,7 +229,7 @@ public:
      */
     const std::shared_ptr<ov::threading::ExecutorManager>& get_executor_manager() const;
 
-    ~IPlugin() = default;
+    virtual ~IPlugin() = default;
 
 protected:
     IPlugin();
