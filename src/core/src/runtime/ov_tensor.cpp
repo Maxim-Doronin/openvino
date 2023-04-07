@@ -29,6 +29,7 @@ namespace ov {
 void Tensor::type_check(const Tensor&) {}
 
 Tensor::~Tensor() {
+    std::cout << "Tensor::~Tensor() impl " << _impl.get() << std::endl;
     _impl = {};
 }
 

@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <limits>
+#include <iostream>
 #include <openvino/op/util/variable_context.hpp>
 
 #include "evaluates_map.hpp"
@@ -133,6 +134,7 @@ bool ov::runtime::interpreter::INTExecutable::call(std::vector<ov::Tensor>& outp
 bool ov::runtime::interpreter::INTExecutable::call(std::vector<ov::Tensor>& outputs,
                                                    const std::vector<ov::Tensor>& inputs,
                                                    const ov::EvaluationContext& context) {
+    std::cout << "start of ov::runtime::interpreter::INTExecutable::call" << std::endl;
     // map function params -> ov::Tensor
     std::unordered_map<std::shared_ptr<ov::descriptor::Tensor>, ov::Tensor> tensor_map;
     size_t input_count = 0;
@@ -151,10 +153,13 @@ bool ov::runtime::interpreter::INTExecutable::call(std::vector<ov::Tensor>& outp
             results_map.emplace(output, output_count);
     }
 
+    std::cout << "start of TemporaryOverrideOutputs" << std::endl;
+
     auto overrider = TemporaryOverrideOutputs(m_model, tensor_map);
 
     // for each ordered op in the graph
     for (const auto& op : m_nodes) {
+        std::cout << "start op " << op << std::endl;
         if (std::dynamic_pointer_cast<ov::op::v0::Parameter>(op)) {
             continue;
         }
@@ -207,7 +212,10 @@ bool ov::runtime::interpreter::INTExecutable::call(std::vector<ov::Tensor>& outp
                 }
             }
         }
+        std::cout << "end op " << op << std::endl;
     }
+
+    std::cout << "End of ov::runtime::interpreter::INTExecutable::call" << std::endl;
 
     return true;
 }

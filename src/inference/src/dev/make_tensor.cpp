@@ -5,6 +5,7 @@
 #include "dev/make_tensor.hpp"
 
 #include <memory>
+#include <iostream>
 
 #include "dev/make_tensor.hpp"
 #include "ie_blob.h"
@@ -26,9 +27,14 @@ public:
           m_shape{shape},
           m_capacity{shape},
           m_ptr{ptr} {
+        std::cout << "ViewTensor " << this << std::endl;
         OPENVINO_ASSERT(m_ptr != nullptr);
         OPENVINO_ASSERT(m_element_type != element::undefined && m_element_type.is_static());
         update_strides();
+    }
+
+    ~ViewTensor() {
+        std::cout << "~ViewTensor " << this << std::endl;
     }
 
     void* data(const element::Type& element_type) const override {
@@ -170,10 +176,13 @@ public:
                          OPENVINO_ASSERT(allocator, "Allocator was not initialized");
                          return const_cast<Allocator&>(allocator).allocate(element_type.size() * shape_size(shape));
                      }()},
-          m_allocator{allocator} {}
+          m_allocator{allocator} {
+        std::cout << "AllocatedTensor " << this << std::endl;
+    }
 
     ~AllocatedTensor() {
         m_allocator.deallocate(m_ptr, get_byte_size());
+        std::cout << "~AllocatedTensor " << this << std::endl;
     }
 
     void set_shape(ov::Shape new_shape) override {
@@ -200,6 +209,7 @@ private:
  * @return Shared pointer to tensor interface
  */
 std::shared_ptr<ITensor> make_tensor(const element::Type element_type, const Shape& shape, const Allocator& allocator) {
+    std::cout << "make_tensor" << std::endl;
     return std::make_shared<AllocatedTensor>(element_type, shape, allocator);
 }
 
