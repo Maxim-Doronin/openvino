@@ -247,10 +247,10 @@ std::vector<int> reserve_available_cpus(const ColumnOfProcessorTypeTable core_ty
     }
     if (core_type < PROC_TYPE_TABLE_SIZE && core_type >= ALL_PROC) {
         for (int i = 0; i < cpu._processors; i++) {
-            if (cpu._cpu_mapping_table[i][CPU_MAP_CORE_TYPE] == core_type &&
-                cpu._cpu_mapping_table[i][CPU_MAP_USED_FLAG] == seek_status &&
-                (socket < 0 || (socket >= 0 && cpu._cpu_mapping_table[i][CPU_MAP_SOCKET_ID] == socket))) {
-                cpu_ids.push_back(cpu._cpu_mapping_table[i][CPU_MAP_PROCESSOR_ID]);
+            if (cpu._cpu_mapping_table.at(i).at(CPU_MAP_CORE_TYPE) == core_type &&
+                cpu._cpu_mapping_table.at(i).at(CPU_MAP_USED_FLAG) == seek_status &&
+                (socket < 0 || (socket >= 0 && cpu._cpu_mapping_table.at(i).at(CPU_MAP_SOCKET_ID) == socket))) {
+                cpu_ids.push_back(cpu._cpu_mapping_table.at(i).at(CPU_MAP_PROCESSOR_ID));
             }
             if (static_cast<int>(cpu_ids.size()) == num_cpus) {
                 break;
@@ -269,13 +269,13 @@ std::vector<int> reserve_available_cpus(const ColumnOfProcessorTypeTable core_ty
 
 std::vector<int> get_logic_cores(const std::vector<int> cpu_ids) {
     std::vector<int> logic_cores;
-    if (cpu._proc_type_table[0][HYPER_THREADING_PROC] > 0) {
+    if (cpu._proc_type_table.at(0).at(HYPER_THREADING_PROC) > 0) {
         int cpu_size = static_cast<int>(cpu_ids.size());
         for (int i = 0; i < cpu._processors; i++) {
             for (int j = 0; j < cpu_size; j++) {
-                if (cpu._cpu_mapping_table[i][CPU_MAP_CORE_ID] == cpu._cpu_mapping_table[cpu_ids[j]][CPU_MAP_CORE_ID] &&
-                    cpu._cpu_mapping_table[i][CPU_MAP_CORE_TYPE] == HYPER_THREADING_PROC) {
-                    logic_cores.push_back(cpu._cpu_mapping_table[i][CPU_MAP_PROCESSOR_ID]);
+                if (cpu._cpu_mapping_table.at(i).at(CPU_MAP_CORE_ID) == cpu._cpu_mapping_table.at(cpu_ids.at(j)).at(CPU_MAP_CORE_ID) &&
+                    cpu._cpu_mapping_table.at(i).at(CPU_MAP_CORE_TYPE) == HYPER_THREADING_PROC) {
+                    logic_cores.push_back(cpu._cpu_mapping_table.at(i).at(CPU_MAP_PROCESSOR_ID));
                 }
             }
             if (cpu_ids.size() == logic_cores.size()) {
@@ -290,8 +290,8 @@ std::vector<int> get_logic_cores(const std::vector<int> cpu_ids) {
 void set_cpu_used(std::vector<int>& cpu_ids, int used) {
     const auto cpu_size = static_cast<int>(cpu_ids.size());
     for (int i = 0; i < cpu_size; i++) {
-        if (cpu_ids[i] < cpu._processors) {
-            cpu._cpu_mapping_table[cpu_ids[i]][CPU_MAP_USED_FLAG] = used;
+        if (cpu_ids.at(i) < cpu._processors) {
+            cpu._cpu_mapping_table.at(cpu_ids.at(i)).at(CPU_MAP_USED_FLAG) = used;
         }
     }
     // update _proc_type_table
@@ -302,16 +302,16 @@ void set_cpu_used(std::vector<int>& cpu_ids, int used) {
             cpu._proc_type_table.assign(cpu._proc_type_table.size(), std::vector<int>(PROC_TYPE_TABLE_SIZE, 0));
             all_table.resize(PROC_TYPE_TABLE_SIZE, 0);
             for (int i = 0; i < cpu._processors; i++) {
-                if (cpu._cpu_mapping_table[i][CPU_MAP_USED_FLAG] < PLUGIN_USED_START) {
-                    cpu._proc_type_table[cpu._cpu_mapping_table[i][CPU_MAP_SOCKET_ID] + start]
-                                        [cpu._cpu_mapping_table[i][CPU_MAP_CORE_TYPE]]++;
-                    cpu._proc_type_table[cpu._cpu_mapping_table[i][CPU_MAP_SOCKET_ID] + start][ALL_PROC]++;
-                    all_table[cpu._cpu_mapping_table[i][CPU_MAP_CORE_TYPE]]++;
-                    all_table[ALL_PROC]++;
+                if (cpu._cpu_mapping_table.at(i).at(CPU_MAP_USED_FLAG) < PLUGIN_USED_START) {
+                    cpu._proc_type_table.at(cpu._cpu_mapping_table.at(i).at(CPU_MAP_SOCKET_ID) + start).at(
+                                        cpu._cpu_mapping_table.at(i).at(CPU_MAP_CORE_TYPE))++;
+                    cpu._proc_type_table.at(cpu._cpu_mapping_table.at(i).at(CPU_MAP_SOCKET_ID) + start).at(ALL_PROC)++;
+                    all_table.at(cpu._cpu_mapping_table.at(i).at(CPU_MAP_CORE_TYPE))++;
+                    all_table.at(ALL_PROC)++;
                 }
             }
             if (cpu._sockets > 1) {
-                cpu._proc_type_table[0] = all_table;
+                cpu._proc_type_table.at(0) = all_table;
             }
         }
     }
