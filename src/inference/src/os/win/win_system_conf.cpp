@@ -23,8 +23,8 @@ void CPU::init_cpu(CPU& cpu) {
         return;
     }
 
-    std::shared_ptr<char> base_shared_ptr(new char[len]);
-    char* base_ptr = base_shared_ptr.get();
+    std::vector<char> base_vector(len);
+    char* base_ptr = base_vector.data();
     if (!GetLogicalProcessorInformationEx(RelationAll, (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX)base_ptr, &len)) {
         return;
     }
