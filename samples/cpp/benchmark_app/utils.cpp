@@ -517,17 +517,23 @@ std::vector<benchmark_app::InputsInfo> get_inputs_info(const std::string& shape_
                                     fileNames.end(),
                                     [](std::pair<std::string, std::vector<std::string>> a,
                                        std::pair<std::string, std::vector<std::string>> b) {
+                                        slog::info << a.first << " size " << a.second.size() << " " 
+                                                   << b.first << " size " << b.second.size()
+                                                   << slog::endl;
                                         return a.second.size() < b.second.size() && a.second.size() != 1;
                                     })
                        ->second.size();
-
+        slog::info << "min_size " << min_size << slog::endl;
         max_size = std::max_element(fileNames.begin(),
                                     fileNames.end(),
                                     [](std::pair<std::string, std::vector<std::string>> a,
                                        std::pair<std::string, std::vector<std::string>> b) {
+                                        slog::info << a.first << " size " << a.second.size() << " " << b.first
+                                                   << " size " << b.second.size() << slog::endl;
                                         return a.second.size() < b.second.size();
                                     })
                        ->second.size();
+        slog::info << "max_size " << max_size << slog::endl;
         if (min_size != max_size) {
             slog::warn << "Number of input files is different for some inputs, minimal number of files will be used ("
                        << min_size << ")" << slog::endl;
