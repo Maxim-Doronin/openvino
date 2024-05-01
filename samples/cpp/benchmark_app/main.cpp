@@ -795,6 +795,8 @@ int main(int argc, char* argv[]) {
             if (batchSize == 0) {
                 batchSize = 1;
             }
+
+            slog::info << "### batchSize: " << batchSize << slog::endl;
         }
 
         bool allow_inference_only_or_sync = can_measure_as_static(app_inputs_info);
@@ -1140,6 +1142,9 @@ int main(int argc, char* argv[]) {
             execTime = std::chrono::duration_cast<ns>(Time::now() - startTime).count();
             processedFramesN += batchSize;
         }
+        slog::info << "### iteration: " << iteration << slog::endl;
+        slog::info << "### processedFramesN: " << processedFramesN << slog::endl;
+        slog::info << "### batchSize: " << batchSize << slog::endl;
 
         // wait the latest inference executions
         inferRequestsQueue.wait_all();
